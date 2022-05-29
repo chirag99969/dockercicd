@@ -1,0 +1,54 @@
+version: "3"
+services:
+  postgres:
+    container_name: class_postgres_4
+    image: postgres:11.1
+    restart: unless-stopped
+    networks:
+      - my-net
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "${MY_PG_PASS}"
+      POSTGRES_DB: "gogs"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "gogs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  gogs:
+    container_name: class_gogs_4
+    image: gogs/gogs:0.11.66
+    restart: unless-stopped
+    networks:
+      - my-net
+    depends_on:
+      # https://docs.docker.com/compose/compose-file/compose-file-v2/#depends_on
+      # https://docs.docker.com/compose/compose-file/compose-file-v2/#healthcheck
+      - postgres
+    ports:
+      - "10022:22"
+      - "10090:3000"
+    volumes:
+     - "../../../gogs/logs:/app/gogs/log"
+  registry:
+    container_name: class_registry_4
+    image: registry:2.6.2
+    restart: unless-stopped
+    networks:
+      - my-net
+    ports:
+      - "5000:5000"
+    environment:
+      REGISTRY_HTTP_TLS_CERTIFICATE: "/certs/domain.crt"
+      REGISTRY_HTTP_TLS_KEY: "/certs/domain.key"
+      REGISTRY_HTTP_SECRET: "iuehfio73bt8dobq"
+    volumes:
+     - "../../../registry/config.yaml:/etc/docker/registry/config.yaml"
+     - "../../../registry/htpasswd:/htpasswd"
+     - "../../../registry/data:/var/lib/registry"
+     - "../../../registry/certs:/certs"
+networks:
+  my-net:
+    driver: bridge
